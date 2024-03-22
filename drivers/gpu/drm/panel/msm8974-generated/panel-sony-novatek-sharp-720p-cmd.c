@@ -11,59 +11,53 @@
 #include <drm/drm_modes.h>
 #include <drm/drm_panel.h>
 
-struct novatek_lgd {
+struct novatek_sharp {
 	struct drm_panel panel;
 	struct mipi_dsi_device *dsi;
 	bool prepared;
 };
 
-static inline struct novatek_lgd *to_novatek_lgd(struct drm_panel *panel)
+static inline struct novatek_sharp *to_novatek_sharp(struct drm_panel *panel)
 {
-	return container_of(panel, struct novatek_lgd, panel);
+	return container_of(panel, struct novatek_sharp, panel);
 }
 
-static int novatek_lgd_on(struct novatek_lgd *ctx)
+static int novatek_sharp_on(struct novatek_sharp *ctx)
 {
 	struct mipi_dsi_device *dsi = ctx->dsi;
 	struct device *dev = &dsi->dev;
 	int ret;
 
-	mipi_dsi_dcs_write_seq(dsi, 0xff, 0x24);
+	mipi_dsi_dcs_write_seq(dsi, 0xba, 0x03);
+	mipi_dsi_dcs_write_seq(dsi, 0xc2, 0x08);
+	mipi_dsi_dcs_write_seq(dsi, 0x3b, 0x03, 0x01, 0x03, 0x0c, 0x06);
+	mipi_dsi_dcs_write_seq(dsi, 0xff, 0x01);
 	mipi_dsi_dcs_write_seq(dsi, 0xfb, 0x01);
-	mipi_dsi_dcs_write_seq(dsi, 0xc6, 0x00);
-	mipi_dsi_dcs_write_seq(dsi, 0x92, 0x94);
-	mipi_dsi_dcs_write_seq(dsi, 0xff, 0xe0);
+	mipi_dsi_dcs_write_seq(dsi, 0x06, 0x22);
+	mipi_dsi_dcs_write_seq(dsi, 0xff, 0x05);
 	mipi_dsi_dcs_write_seq(dsi, 0xfb, 0x01);
-	mipi_dsi_dcs_write_seq(dsi, 0xb8, 0xad);
-	mipi_dsi_dcs_write_seq(dsi, 0xb5, 0x86);
-	mipi_dsi_dcs_write_seq(dsi, 0xb6, 0x77);
-	mipi_dsi_dcs_write_seq(dsi, 0xff, 0xe0);
-	mipi_dsi_dcs_write_seq(dsi, 0xfb, 0x01);
-	mipi_dsi_dcs_write_seq(dsi, 0x10, 0x00);
-	mipi_dsi_dcs_write_seq(dsi, 0xff, 0x24);
-	mipi_dsi_dcs_write_seq(dsi, 0xfb, 0x01);
-	mipi_dsi_dcs_write_seq(dsi, 0xc4, 0x24);
-	mipi_dsi_dcs_write_seq(dsi, 0xff, 0x10);
-	mipi_dsi_dcs_write_seq(dsi, 0xfb, 0x01);
-
-	ret = mipi_dsi_dcs_set_tear_on(dsi, MIPI_DSI_DCS_TEAR_MODE_VBLANK);
-	if (ret < 0) {
-		dev_err(dev, "Failed to set tear on: %d\n", ret);
-		return ret;
-	}
-
-	ret = mipi_dsi_dcs_set_tear_scanline(dsi, 0x0300);
-	if (ret < 0) {
-		dev_err(dev, "Failed to set tear scanline: %d\n", ret);
-		return ret;
-	}
+	mipi_dsi_dcs_write_seq(dsi, 0x02, 0x8e);
+	mipi_dsi_dcs_write_seq(dsi, 0x03, 0x8e);
+	mipi_dsi_dcs_write_seq(dsi, 0x04, 0x8e);
+	mipi_dsi_dcs_write_seq(dsi, 0x09, 0x00);
+	mipi_dsi_dcs_write_seq(dsi, 0x0a, 0x13);
+	mipi_dsi_dcs_write_seq(dsi, 0x0b, 0x76);
+	mipi_dsi_dcs_write_seq(dsi, 0x0d, 0x09);
+	mipi_dsi_dcs_write_seq(dsi, 0x0e, 0x1e);
+	mipi_dsi_dcs_write_seq(dsi, 0x0f, 0x06);
+	mipi_dsi_dcs_write_seq(dsi, 0x10, 0x31);
+	mipi_dsi_dcs_write_seq(dsi, 0x14, 0x00);
+	mipi_dsi_dcs_write_seq(dsi, 0xa2, 0x00);
+	mipi_dsi_dcs_write_seq(dsi, 0xff, 0x00);
 
 	ret = mipi_dsi_dcs_exit_sleep_mode(dsi);
 	if (ret < 0) {
 		dev_err(dev, "Failed to exit sleep mode: %d\n", ret);
 		return ret;
 	}
-	msleep(30);
+	msleep(150);
+
+	mipi_dsi_dcs_write_seq(dsi, 0x35, 0x00);
 
 	ret = mipi_dsi_dcs_set_display_on(dsi);
 	if (ret < 0) {
@@ -74,7 +68,7 @@ static int novatek_lgd_on(struct novatek_lgd *ctx)
 	return 0;
 }
 
-static int novatek_lgd_off(struct novatek_lgd *ctx)
+static int novatek_sharp_off(struct novatek_sharp *ctx)
 {
 	struct mipi_dsi_device *dsi = ctx->dsi;
 	struct device *dev = &dsi->dev;
@@ -85,28 +79,27 @@ static int novatek_lgd_off(struct novatek_lgd *ctx)
 		dev_err(dev, "Failed to set display off: %d\n", ret);
 		return ret;
 	}
-	msleep(20);
 
 	ret = mipi_dsi_dcs_enter_sleep_mode(dsi);
 	if (ret < 0) {
 		dev_err(dev, "Failed to enter sleep mode: %d\n", ret);
 		return ret;
 	}
-	msleep(100);
+	msleep(200);
 
 	return 0;
 }
 
-static int novatek_lgd_prepare(struct drm_panel *panel)
+static int novatek_sharp_prepare(struct drm_panel *panel)
 {
-	struct novatek_lgd *ctx = to_novatek_lgd(panel);
+	struct novatek_sharp *ctx = to_novatek_sharp(panel);
 	struct device *dev = &ctx->dsi->dev;
 	int ret;
 
 	if (ctx->prepared)
 		return 0;
 
-	ret = novatek_lgd_on(ctx);
+	ret = novatek_sharp_on(ctx);
 	if (ret < 0) {
 		dev_err(dev, "Failed to initialize panel: %d\n", ret);
 		return ret;
@@ -116,16 +109,16 @@ static int novatek_lgd_prepare(struct drm_panel *panel)
 	return 0;
 }
 
-static int novatek_lgd_unprepare(struct drm_panel *panel)
+static int novatek_sharp_unprepare(struct drm_panel *panel)
 {
-	struct novatek_lgd *ctx = to_novatek_lgd(panel);
+	struct novatek_sharp *ctx = to_novatek_sharp(panel);
 	struct device *dev = &ctx->dsi->dev;
 	int ret;
 
 	if (!ctx->prepared)
 		return 0;
 
-	ret = novatek_lgd_off(ctx);
+	ret = novatek_sharp_off(ctx);
 	if (ret < 0)
 		dev_err(dev, "Failed to un-initialize panel: %d\n", ret);
 
@@ -134,26 +127,26 @@ static int novatek_lgd_unprepare(struct drm_panel *panel)
 	return 0;
 }
 
-static const struct drm_display_mode novatek_lgd_mode = {
-	.clock = (1080 + 56 + 8 + 8) * (1920 + 233 + 2 + 8) * 60 / 1000,
-	.hdisplay = 1080,
-	.hsync_start = 1080 + 56,
-	.hsync_end = 1080 + 56 + 8,
-	.htotal = 1080 + 56 + 8 + 8,
-	.vdisplay = 1920,
-	.vsync_start = 1920 + 233,
-	.vsync_end = 1920 + 233 + 2,
-	.vtotal = 1920 + 233 + 2 + 8,
-	.width_mm = 64,
-	.height_mm = 114,
+static const struct drm_display_mode novatek_sharp_mode = {
+	.clock = (720 + 36 + 8 + 8) * (1280 + 251 + 5 + 4) * 60 / 1000,
+	.hdisplay = 720,
+	.hsync_start = 720 + 36,
+	.hsync_end = 720 + 36 + 8,
+	.htotal = 720 + 36 + 8 + 8,
+	.vdisplay = 1280,
+	.vsync_start = 1280 + 251,
+	.vsync_end = 1280 + 251 + 5,
+	.vtotal = 1280 + 251 + 5 + 4,
+	.width_mm = 56,
+	.height_mm = 100,
 };
 
-static int novatek_lgd_get_modes(struct drm_panel *panel,
-				 struct drm_connector *connector)
+static int novatek_sharp_get_modes(struct drm_panel *panel,
+				   struct drm_connector *connector)
 {
 	struct drm_display_mode *mode;
 
-	mode = drm_mode_duplicate(connector->dev, &novatek_lgd_mode);
+	mode = drm_mode_duplicate(connector->dev, &novatek_sharp_mode);
 	if (!mode)
 		return -ENOMEM;
 
@@ -167,16 +160,16 @@ static int novatek_lgd_get_modes(struct drm_panel *panel,
 	return 1;
 }
 
-static const struct drm_panel_funcs novatek_lgd_panel_funcs = {
-	.prepare = novatek_lgd_prepare,
-	.unprepare = novatek_lgd_unprepare,
-	.get_modes = novatek_lgd_get_modes,
+static const struct drm_panel_funcs novatek_sharp_panel_funcs = {
+	.prepare = novatek_sharp_prepare,
+	.unprepare = novatek_sharp_unprepare,
+	.get_modes = novatek_sharp_get_modes,
 };
 
-static int novatek_lgd_probe(struct mipi_dsi_device *dsi)
+static int novatek_sharp_probe(struct mipi_dsi_device *dsi)
 {
 	struct device *dev = &dsi->dev;
-	struct novatek_lgd *ctx;
+	struct novatek_sharp *ctx;
 	int ret;
 
 	ctx = devm_kzalloc(dev, sizeof(*ctx), GFP_KERNEL);
@@ -191,7 +184,7 @@ static int novatek_lgd_probe(struct mipi_dsi_device *dsi)
 	dsi->mode_flags = MIPI_DSI_MODE_VIDEO_HSE |
 			  MIPI_DSI_CLOCK_NON_CONTINUOUS;
 
-	drm_panel_init(&ctx->panel, dev, &novatek_lgd_panel_funcs,
+	drm_panel_init(&ctx->panel, dev, &novatek_sharp_panel_funcs,
 		       DRM_MODE_CONNECTOR_DSI);
 	ctx->panel.prepare_prev_first = true;
 
@@ -211,9 +204,9 @@ static int novatek_lgd_probe(struct mipi_dsi_device *dsi)
 	return 0;
 }
 
-static void novatek_lgd_remove(struct mipi_dsi_device *dsi)
+static void novatek_sharp_remove(struct mipi_dsi_device *dsi)
 {
-	struct novatek_lgd *ctx = mipi_dsi_get_drvdata(dsi);
+	struct novatek_sharp *ctx = mipi_dsi_get_drvdata(dsi);
 	int ret;
 
 	ret = mipi_dsi_detach(dsi);
@@ -223,22 +216,22 @@ static void novatek_lgd_remove(struct mipi_dsi_device *dsi)
 	drm_panel_remove(&ctx->panel);
 }
 
-static const struct of_device_id novatek_lgd_of_match[] = {
-	{ .compatible = "sony,leo-panel-novatek-lgd" }, // FIXME
+static const struct of_device_id novatek_sharp_of_match[] = {
+	{ .compatible = "sony,novatek-sharp-720p-cmd" }, // FIXME
 	{ /* sentinel */ }
 };
-MODULE_DEVICE_TABLE(of, novatek_lgd_of_match);
+MODULE_DEVICE_TABLE(of, novatek_sharp_of_match);
 
-static struct mipi_dsi_driver novatek_lgd_driver = {
-	.probe = novatek_lgd_probe,
-	.remove = novatek_lgd_remove,
+static struct mipi_dsi_driver novatek_sharp_driver = {
+	.probe = novatek_sharp_probe,
+	.remove = novatek_sharp_remove,
 	.driver = {
-		.name = "panel-novatek-lgd",
-		.of_match_table = novatek_lgd_of_match,
+		.name = "panel-novatek-sharp",
+		.of_match_table = novatek_sharp_of_match,
 	},
 };
-module_mipi_dsi_driver(novatek_lgd_driver);
+module_mipi_dsi_driver(novatek_sharp_driver);
 
 MODULE_AUTHOR("linux-mdss-dsi-panel-driver-generator <fix@me>"); // FIXME
-MODULE_DESCRIPTION("DRM driver for lgd novatek 1080p cmd");
+MODULE_DESCRIPTION("DRM driver for sharp novatek 720p cmd");
 MODULE_LICENSE("GPL");
