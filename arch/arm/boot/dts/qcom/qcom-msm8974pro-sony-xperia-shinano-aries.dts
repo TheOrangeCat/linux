@@ -50,6 +50,8 @@
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&panel_pin>;
+		
+		backlight = <&pm8941_wled>;
 
 		port {
 			panel_in: endpoint {
@@ -67,6 +69,18 @@
 &mdss_dsi0_phy {
 	vddio-supply = <&pm8941_l12>;
 	status = "okay";
+};
+
+&pm8941_wled {
+	status = "okay";
+
+	qcom,cs-out;
+	qcom,current-limit = <20>;
+	qcom,current-boost-limit = <805>;
+	qcom,switching-freq = <1600>;
+	qcom,ovp = <29>;
+	qcom,max-brightness = <2047>;
+	qcom,num-strings = <2>;
 };
 
 &tlmm {
